@@ -19,7 +19,7 @@ function getSortKey(url) {
 }
 
 async function reorderTabs() {
-  const tabs = await browser.tabs.query({ currentWindow: true });
+  const tabs = await chrome.tabs.query({ currentWindow: true });
   const pinnedTabs = tabs.filter((tab) => tab.pinned);
   const unpinnedTabs = tabs.filter((tab) => !tab.pinned);
 
@@ -30,7 +30,7 @@ async function reorderTabs() {
   const sortedTabs = [...pinnedTabs, ...unpinnedTabs];
   const tabIds = sortedTabs.map((tab) => tab.id);
   if (tabIds.length) {
-    await browser.tabs.move(tabIds, { index: -1 });
+    await chrome.tabs.move(tabIds, { index: -1 });
   }
 
   // Group tabs: count tabs by groupKey (hostname + first path segment)
@@ -42,19 +42,14 @@ async function reorderTabs() {
   }
 
   // Only create groups for keys with more than 3 tabs
-  if (browser.tabs.group) {
-    for (const [key, ids] of Object.entries(groupCounts)) {
-      if (ids.length > 3) {
-        const groupId = await browser.tabs.group({ tabIds: ids });
-        // Set group title to the key (e.g., "github.com/circleci")
-        if (browser.tabGroups && browser.tabGroups.update) {
-          await browser.tabGroups.update(groupId, { title: key });
-        }
-      }
+  for (const [key, ids] of Object.entries(groupCounts)) {
+    if (ids.length > 3) {
+      const groupId = await chrome.tabs.group({ tabIds: ids });
+      await chrome.tabGroups.update(groupId, { title: key });
     }
   }
 }
 
-browser.browserAction.onClicked.addListener(() => {
+chrome.action.onClicked.addListener(() => {
   reorderTabs();
 });
