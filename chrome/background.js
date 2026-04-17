@@ -21,21 +21,23 @@ function getSortKey(url) {
 async function reorderTabs() {
   const tabs = await chrome.tabs.query({ currentWindow: true });
   const pinnedTabs = tabs.filter((tab) => tab.pinned);
-  const unpinnedTabs = tabs.filter((tab) => !tab.pinned);
+  const ungroupedTabs = tabs.filter(
+    (tab) => !tab.pinned && tab.groupId === chrome.tabGroups.TAB_GROUP_ID_NONE,
+  );
 
-  unpinnedTabs.sort((a, b) => {
+  ungroupedTabs.sort((a, b) => {
     return getSortKey(a.url).localeCompare(getSortKey(b.url));
   });
 
-  const sortedTabs = [...pinnedTabs, ...unpinnedTabs];
-  const tabIds = sortedTabs.map((tab) => tab.id);
-  if (tabIds.length) {
-    await chrome.tabs.move(tabIds, { index: -1 });
+  // Move only ungrouped tabs, preserving position of pinned + grouped tabs
+  const ungroupedIds = ungroupedTabs.map((tab) => tab.id);
+  if (ungroupedIds.length) {
+    await chrome.tabs.move(ungroupedIds, { index: -1 });
   }
 
-  // Group tabs: count tabs by groupKey (hostname + first path segment)
+  // Group tabs: count ungrouped tabs by groupKey (hostname + first path segment)
   const groupCounts = {};
-  for (const tab of unpinnedTabs) {
+  for (const tab of ungroupedTabs) {
     const key = getGroupKey(tab.url);
     if (!groupCounts[key]) groupCounts[key] = [];
     groupCounts[key].push(tab.id);

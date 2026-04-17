@@ -20,22 +20,29 @@ function getSortKey(url) {
 
 async function reorderTabs() {
   const tabs = await browser.tabs.query({ currentWindow: true });
-  const pinnedTabs = tabs.filter((tab) => tab.pinned);
-  const unpinnedTabs = tabs.filter((tab) => !tab.pinned);
 
-  unpinnedTabs.sort((a, b) => {
+  // Determine which tabs are already in a group
+  const hasGroupApi =
+    typeof browser.tabGroups !== 'undefined' &&
+    typeof browser.tabGroups.TAB_GROUP_ID_NONE !== 'undefined';
+  const isUngrouped = (tab) =>
+    !hasGroupApi || tab.groupId === browser.tabGroups.TAB_GROUP_ID_NONE;
+
+  const ungroupedTabs = tabs.filter((tab) => !tab.pinned && isUngrouped(tab));
+
+  ungroupedTabs.sort((a, b) => {
     return getSortKey(a.url).localeCompare(getSortKey(b.url));
   });
 
-  const sortedTabs = [...pinnedTabs, ...unpinnedTabs];
-  const tabIds = sortedTabs.map((tab) => tab.id);
-  if (tabIds.length) {
-    await browser.tabs.move(tabIds, { index: -1 });
+  // Move only ungrouped tabs, preserving position of pinned + grouped tabs
+  const ungroupedIds = ungroupedTabs.map((tab) => tab.id);
+  if (ungroupedIds.length) {
+    await browser.tabs.move(ungroupedIds, { index: -1 });
   }
 
-  // Group tabs: count tabs by groupKey (hostname + first path segment)
+  // Group tabs: count ungrouped tabs by groupKey (hostname + first path segment)
   const groupCounts = {};
-  for (const tab of unpinnedTabs) {
+  for (const tab of ungroupedTabs) {
     const key = getGroupKey(tab.url);
     if (!groupCounts[key]) groupCounts[key] = [];
     groupCounts[key].push(tab.id);
