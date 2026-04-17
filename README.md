@@ -20,4 +20,19 @@ Clone the repo and load the extension from the appropriate folder:
 2. Click "Load Temporary Add-on..."
 3. Select `firefox/manifest.json`
 
-**Note:** Firefox tab groups require Firefox 138+.
+**Note:** Firefox tab groups require Firefox 138+. Temporary add-ons don't persist across browser restarts.
+
+## Build the Firefox .xpi
+
+From the repo root:
+
+```sh
+cd firefox
+zip -r ../sortabasaurus.xpi manifest.json background.js images/
+```
+
+## Release Checklist
+
+1. Bump `version` in both `chrome/manifest.json` and `firefox/manifest.json`
+2. Rebuild the .xpi (see above)
+3. Commit and push

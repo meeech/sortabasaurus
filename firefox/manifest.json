@@ -1,7 +1,7 @@
 {
   "manifest_version": 2,
   "name": "Tab Sorter",
-  "version": "1.0",
+  "version": "1.1",
   "icons": {
     "16": "images/icon-16.png",
     "32": "images/icon-32.png",
@@ -17,5 +17,15 @@
   "permissions": [
     "tabs",
     "tabGroups"
-  ]
+  ],
+  "browser_specific_settings": {
+    "gecko": {
+      "id": "sortabasaurus@mitchellamihod",
+      "strict_min_version": "140.0",
+      "data_collection_permissions": {
+        "allowed": false,
+        "required": ["none"]
+      }
+    }
+  }
 }
