@@ -71,15 +71,25 @@ async function refreshBadges() {
   );
 }
 
-chrome.action.onClicked.addListener(async () => {
-  await reorderTabs();
-  refreshBadges();
+// Session restore fires one event per tab; coalesce into a single repaint
+let pendingRefresh;
+function scheduleBadgeRefresh() {
+  clearTimeout(pendingRefresh);
+  pendingRefresh = setTimeout(refreshBadges, 100);
+}
+
+chrome.action.onClicked.addListener(() => {
+  reorderTabs();
 });
 
-chrome.runtime.onStartup.addListener(refreshBadges);
-chrome.runtime.onInstalled.addListener(refreshBadges);
-chrome.tabs.onCreated.addListener(refreshBadges);
-chrome.tabs.onRemoved.addListener(refreshBadges);
-chrome.tabs.onAttached.addListener(refreshBadges);
-chrome.tabs.onDetached.addListener(refreshBadges);
-chrome.tabs.onReplaced.addListener(refreshBadges);
+// These two exist to wake the service worker; the top-level call below does
+// the actual seeding once it re-evaluates
+chrome.runtime.onStartup.addListener(scheduleBadgeRefresh);
+chrome.runtime.onInstalled.addListener(scheduleBadgeRefresh);
+chrome.tabs.onCreated.addListener(scheduleBadgeRefresh);
+chrome.tabs.onRemoved.addListener(scheduleBadgeRefresh);
+chrome.tabs.onAttached.addListener(scheduleBadgeRefresh);
+chrome.tabs.onDetached.addListener(scheduleBadgeRefresh);
+chrome.tabs.onReplaced.addListener(scheduleBadgeRefresh);
+
+scheduleBadgeRefresh();

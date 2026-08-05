@@ -80,15 +80,20 @@ async function refreshBadges() {
   );
 }
 
-browser.browserAction.onClicked.addListener(async () => {
-  await reorderTabs();
-  refreshBadges();
+// Session restore fires one event per tab; coalesce into a single repaint
+let pendingRefresh;
+function scheduleBadgeRefresh() {
+  clearTimeout(pendingRefresh);
+  pendingRefresh = setTimeout(refreshBadges, 100);
+}
+
+browser.browserAction.onClicked.addListener(() => {
+  reorderTabs();
 });
 
-browser.tabs.onCreated.addListener(refreshBadges);
-browser.tabs.onRemoved.addListener(refreshBadges);
-browser.tabs.onAttached.addListener(refreshBadges);
-browser.tabs.onDetached.addListener(refreshBadges);
-browser.tabs.onReplaced.addListener(refreshBadges);
+browser.tabs.onCreated.addListener(scheduleBadgeRefresh);
+browser.tabs.onRemoved.addListener(scheduleBadgeRefresh);
+browser.tabs.onAttached.addListener(scheduleBadgeRefresh);
+browser.tabs.onDetached.addListener(scheduleBadgeRefresh);
 
-refreshBadges();
+scheduleBadgeRefresh();
