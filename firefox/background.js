@@ -61,6 +61,39 @@ async function reorderTabs() {
   }
 }
 
+// Badge is scoped per-tab so each window can show its own count
+async function refreshBadges() {
+  const tabs = await browser.tabs.query({});
+  const counts = {};
+  for (const tab of tabs) {
+    counts[tab.windowId] = (counts[tab.windowId] || 0) + 1;
+  }
+
+  browser.browserAction.setBadgeBackgroundColor({ color: '#2f6f4f' });
+  await Promise.allSettled(
+    tabs.map((tab) =>
+      browser.browserAction.setBadgeText({
+        tabId: tab.id,
+        text: String(counts[tab.windowId]),
+      }),
+    ),
+  );
+}
+
+// Session restore fires one event per tab; coalesce into a single repaint
+let pendingRefresh;
+function scheduleBadgeRefresh() {
+  clearTimeout(pendingRefresh);
+  pendingRefresh = setTimeout(refreshBadges, 100);
+}
+
 browser.browserAction.onClicked.addListener(() => {
   reorderTabs();
 });
+
+browser.tabs.onCreated.addListener(scheduleBadgeRefresh);
+browser.tabs.onRemoved.addListener(scheduleBadgeRefresh);
+browser.tabs.onAttached.addListener(scheduleBadgeRefresh);
+browser.tabs.onDetached.addListener(scheduleBadgeRefresh);
+
+scheduleBadgeRefresh();

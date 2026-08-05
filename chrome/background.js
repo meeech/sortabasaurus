@@ -52,6 +52,44 @@ async function reorderTabs() {
   }
 }
 
+// Badge is scoped per-tab so each window can show its own count
+async function refreshBadges() {
+  const tabs = await chrome.tabs.query({});
+  const counts = {};
+  for (const tab of tabs) {
+    counts[tab.windowId] = (counts[tab.windowId] || 0) + 1;
+  }
+
+  chrome.action.setBadgeBackgroundColor({ color: '#2f6f4f' });
+  await Promise.allSettled(
+    tabs.map((tab) =>
+      chrome.action.setBadgeText({
+        tabId: tab.id,
+        text: String(counts[tab.windowId]),
+      }),
+    ),
+  );
+}
+
+// Session restore fires one event per tab; coalesce into a single repaint
+let pendingRefresh;
+function scheduleBadgeRefresh() {
+  clearTimeout(pendingRefresh);
+  pendingRefresh = setTimeout(refreshBadges, 100);
+}
+
 chrome.action.onClicked.addListener(() => {
   reorderTabs();
 });
+
+// These two exist to wake the service worker; the top-level call below does
+// the actual seeding once it re-evaluates
+chrome.runtime.onStartup.addListener(scheduleBadgeRefresh);
+chrome.runtime.onInstalled.addListener(scheduleBadgeRefresh);
+chrome.tabs.onCreated.addListener(scheduleBadgeRefresh);
+chrome.tabs.onRemoved.addListener(scheduleBadgeRefresh);
+chrome.tabs.onAttached.addListener(scheduleBadgeRefresh);
+chrome.tabs.onDetached.addListener(scheduleBadgeRefresh);
+chrome.tabs.onReplaced.addListener(scheduleBadgeRefresh);
+
+scheduleBadgeRefresh();

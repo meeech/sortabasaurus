@@ -2,6 +2,8 @@
 
 Sorts tabs by hostname, org, and repo. Groups tabs when 3+ share the same hostname/org.
 
+The toolbar icon shows a badge with the number of open tabs in that window.
+
 ## Why?
 
 I have a tab problem. During the day I open a lot of tabs. This will group them to make it easier to manage.
