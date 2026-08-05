@@ -61,6 +61,34 @@ async function reorderTabs() {
   }
 }
 
-browser.browserAction.onClicked.addListener(() => {
-  reorderTabs();
+// Badge is scoped per-tab so each window can show its own count
+async function refreshBadges() {
+  const tabs = await browser.tabs.query({});
+  const counts = {};
+  for (const tab of tabs) {
+    counts[tab.windowId] = (counts[tab.windowId] || 0) + 1;
+  }
+
+  browser.browserAction.setBadgeBackgroundColor({ color: '#2f6f4f' });
+  await Promise.allSettled(
+    tabs.map((tab) =>
+      browser.browserAction.setBadgeText({
+        tabId: tab.id,
+        text: String(counts[tab.windowId]),
+      }),
+    ),
+  );
+}
+
+browser.browserAction.onClicked.addListener(async () => {
+  await reorderTabs();
+  refreshBadges();
 });
+
+browser.tabs.onCreated.addListener(refreshBadges);
+browser.tabs.onRemoved.addListener(refreshBadges);
+browser.tabs.onAttached.addListener(refreshBadges);
+browser.tabs.onDetached.addListener(refreshBadges);
+browser.tabs.onReplaced.addListener(refreshBadges);
+
+refreshBadges();
